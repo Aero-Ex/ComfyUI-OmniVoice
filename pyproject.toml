@@ -1,7 +1,7 @@
 [project]
-name = "ComfyUI-OmniVoice"
+name = "ComfyUI-OmniVoice-Native"
 description = "A native dependency-free port of the OmniVoice TTS model (Qwen3 LLM + HiggsAudioV2 codec) for ComfyUI."
-version = "1.0.1"
+version = "1.0.0"
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.9"

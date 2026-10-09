@@ -1,0 +1,15 @@
+[project]
+name = "ComfyUI-OmniVoice"
+description = "A native dependency-free port of the OmniVoice TTS model (Qwen3 LLM + HiggsAudioV2 codec) for ComfyUI."
+version = "1.0.0"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[project.urls]
+Repository = "https://github.com/Aero-Ex/ComfyUI-OmniVoice"
+
+[tool.comfy]
+PublisherId = "aerox"
+DisplayName = "OmniVoice"
+Icon = ""

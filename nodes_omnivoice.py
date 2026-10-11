@@ -144,11 +144,12 @@ class OmniVoiceGenerate:
             "prompt": ("STRING", {"multiline": True, "tooltip": "The text prompt to generate audio from."}),
             "num_steps": ("INT", {"default": 32, "min": 1, "max": 256, "step": 1, "tooltip": "Iterative unmasking steps."}),
             "guidance_scale": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1, "tooltip": "Classifier-free guidance scale."}),
-            "class_temperature": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Token sampling temperature. 0 is greedy."}),
+            "class_temperature": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Token sampling temperature. 0 is greedy (seed has no effect on token choice)."}),
             "chunk_duration": ("FLOAT", {"default": 15.0, "min": 0.0, "max": 120.0, "step": 0.5, "tooltip": "Target chunk length in seconds for long outputs. 0 disables chunking."}),
             "chunk_threshold": ("FLOAT", {"default": 30.0, "min": 0.0, "max": 3600.0, "step": 1.0, "tooltip": "Estimated output length in seconds above which chunking activates. 0 disables chunking."}),
-            "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "Random seed for sampling noise."}),
+            "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "Random seed. Only used when a temperature is above 0."}),
         }, "optional": {
+            "position_temperature": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1, "tooltip": "Unmask-order temperature. 0 is greedy (seed has no effect)."}),
             "ref_audio": ("AUDIO", {"tooltip": "Reference audio for voice cloning."}),
             "ref_text": ("STRING", {"multiline": True, "tooltip": "Transcription of the reference audio."}),
             "language": ("STRING", {"default": "", "tooltip": "Language name or code (e.g. English, en). Empty for auto."}),
@@ -162,6 +163,7 @@ class OmniVoiceGenerate:
 
     def execute(self, model, tokenizer, prompt, num_steps=32,
                 guidance_scale=2.0, class_temperature=0.0,
+                position_temperature=5.0,
                 chunk_duration=15.0, chunk_threshold=30.0, seed=0,
                 ref_audio=None, ref_text="", language="", instruct="", duration=0.0):
         # Loader wraps both models in ModelPatchers; unwrap for direct use.
@@ -258,6 +260,7 @@ class OmniVoiceGenerate:
                         num_steps=num_steps,
                         guidance_scale=guidance_scale,
                         class_temp=class_temperature,
+                        position_temp=position_temperature,
                         callback=lambda s, b=run_chunk.done: pbar.update_absolute(b + s),
                     )
 

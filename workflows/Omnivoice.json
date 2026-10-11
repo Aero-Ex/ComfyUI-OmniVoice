@@ -1,19 +1,19 @@
 {
   "id": "1ac6bdee-2527-4913-809f-cfe1fc1663d3",
   "revision": 0,
-  "last_node_id": 10,
-  "last_link_id": 25,
+  "last_node_id": 18,
+  "last_link_id": 40,
   "nodes": [
     {
       "id": 1,
       "type": "OmniVoiceLoader",
       "pos": [
-        1480.7789395242914,
-        -603.9392438370224
+        1043.306011828889,
+        -1200.80123997831
       ],
       "size": [
-        302.7911652954298,
-        82.00686383458478
+        405.4464302866098,
+        105.99564939433904
       ],
       "flags": {},
       "order": 0,
@@ -24,14 +24,14 @@
           "name": "model",
           "type": "OMNIVOICE",
           "links": [
-            15
+            27
           ]
         },
         {
           "name": "audio_tokenizer",
           "type": "OMNIVOICE_TOKENIZER",
           "links": [
-            16
+            28
           ]
         }
       ],
@@ -49,8 +49,8 @@
       "id": 3,
       "type": "PrimitiveStringMultiline",
       "pos": [
-        849.5310019092756,
-        -516.9783635225931
+        967.3937457843601,
+        -1019.3976925136128
       ],
       "size": [
         545.4014609155495,
@@ -65,7 +65,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            17
+            29
           ]
         }
       ],
@@ -73,31 +73,31 @@
         "Node name for S&R": "PrimitiveStringMultiline"
       },
       "widgets_values": [
-        "hello gays whats up "
+        "I don't really care what you call me. I've been a silent spectator, watching species evolve, empires rise and fall. But always remember, I am mighty and enduring. Respect me and I'll nurture you; ignore me and you shall face."
       ],
       "widgets_values_named": {
-        "value": "hello gays whats up "
+        "value": "I don't really care what you call me. I've been a silent spectator, watching species evolve, empires rise and fall. But always remember, I am mighty and enduring. Respect me and I'll nurture you; ignore me and you shall face."
       }
     },
     {
       "id": 5,
       "type": "SaveAudioAdvanced",
       "pos": [
-        2489.2730037763577,
-        -386.088990594384
+        2517.4415592967657,
+        -1120.403424951187
       ],
       "size": [
         539.3289121398063,
         249.2382905736746
       ],
       "flags": {},
-      "order": 5,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 19
+          "link": 30
         }
       ],
       "outputs": [
@@ -120,77 +120,35 @@
       }
     },
     {
-      "id": 8,
-      "type": "OmniVoiceVoiceDesign",
-      "pos": [
-        1607.445603920173,
-        -35.596089413170034
-      ],
-      "size": [
-        270,
-        178
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 4,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "instruct",
-          "type": "STRING",
-          "links": []
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "OmniVoiceVoiceDesign"
-      },
-      "widgets_values": [
-        "male",
-        "child",
-        "low pitch",
-        "auto",
-        "chinese accent",
-        "auto"
-      ],
-      "widgets_values_named": {
-        "gender": "male",
-        "age": "child",
-        "pitch": "low pitch",
-        "style": "auto",
-        "accent": "chinese accent",
-        "dialect": "auto"
-      }
-    },
-    {
-      "id": 9,
+      "id": 12,
       "type": "OmniVoiceGenerate",
       "pos": [
-        1911.0619486980877,
-        -508.79659418983965
+        1896.8014813481373,
+        -1109.8483805215712
       ],
       "size": [
         400,
-        422
+        446
       ],
       "flags": {},
-      "order": 4,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "OMNIVOICE",
-          "link": 15
+          "link": 27
         },
         {
           "name": "tokenizer",
           "type": "OMNIVOICE_TOKENIZER",
-          "link": 16
+          "link": 28
         },
         {
           "name": "ref_audio",
           "shape": 7,
           "type": "AUDIO",
-          "link": 25
+          "link": 39
         },
         {
           "name": "prompt",
@@ -198,7 +156,25 @@
           "widget": {
             "name": "prompt"
           },
-          "link": 17
+          "link": 29
+        },
+        {
+          "name": "ref_text",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "ref_text"
+          },
+          "link": 40
+        },
+        {
+          "name": "instruct",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "instruct"
+          },
+          "link": 38
         }
       ],
       "outputs": [
@@ -206,7 +182,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            19
+            30
           ]
         }
       ],
@@ -220,9 +196,10 @@
         0,
         15,
         30,
-        2,
-        "fixed",
-        "two thousand year later",
+        954384136945163,
+        "randomize",
+        5,
+        "",
         "",
         "",
         0
@@ -234,35 +211,37 @@
         "class_temperature": 0,
         "chunk_duration": 15,
         "chunk_threshold": 30,
-        "seed": 2,
-        "control_after_generate": "fixed",
-        "ref_text": "two thousand year later",
+        "seed": 954384136945163,
+        "control_after_generate": "randomize",
+        "position_temperature": 5,
+        "ref_text": "",
         "language": "",
         "instruct": "",
         "duration": 0
       }
     },
     {
-      "id": 10,
+      "id": 13,
       "type": "LoadAudio",
       "pos": [
-        1430.7644054794328,
-        -383.06180057192904
+        992.7920379297301,
+        -337.6491020750992
       ],
       "size": [
-        389.85639645193385,
-        138.0042174305316
+        453.15720087542127,
+        142.1446412165221
       ],
       "flags": {},
-      "order": 3,
-      "mode": 0,
+      "order": 2,
+      "mode": 4,
       "inputs": [],
       "outputs": [
         {
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            25
+            31,
+            39
           ]
         }
       ],
@@ -270,65 +249,332 @@
         "Node name for S&R": "LoadAudio"
       },
       "widgets_values": [
-        "SPONGEBOB 2000 YEARS LATER - QuickSounds.com.mp3",
+        "voxcpm2_00006.flac [output]",
         ""
       ],
       "widgets_values_named": {
-        "audio": "SPONGEBOB 2000 YEARS LATER - QuickSounds.com.mp3",
+        "audio": "voxcpm2_00006.flac [output]",
         "upload": ""
       }
+    },
+    {
+      "id": 14,
+      "type": "Qwen3ASRTranscribe",
+      "pos": [
+        1751.5360593561106,
+        -456.23621996852444
+      ],
+      "size": [
+        400,
+        316
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "QWEN3ASR",
+          "link": 32
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 31
+        },
+        {
+          "name": "aligner",
+          "shape": 7,
+          "type": "QWEN3ALIGNER",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "transcription",
+          "type": "STRING",
+          "links": [
+            40
+          ]
+        },
+        {
+          "name": "language",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "word_srt",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Qwen3ASRTranscribe"
+      },
+      "widgets_values": [
+        512,
+        0,
+        "",
+        "",
+        60,
+        8,
+        84,
+        0.6
+      ],
+      "widgets_values_named": {
+        "max_new_tokens": 512,
+        "temperature": 0,
+        "language": "",
+        "system_prompt": "",
+        "chunk_seconds": 60,
+        "srt_max_words": 8,
+        "srt_max_chars": 84,
+        "srt_max_gap": 0.6
+      }
+    },
+    {
+      "id": 15,
+      "type": "Qwen3ASRLoader",
+      "pos": [
+        998.7855186363588,
+        -486.5591076550255
+      ],
+      "size": [
+        361.1740520535607,
+        86.00335087154744
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "QWEN3ASR",
+          "links": [
+            32
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Qwen3ASRLoader"
+      },
+      "widgets_values": [
+        "qwen3-asr-0.6B-int8-convrot.safetensors"
+      ],
+      "widgets_values_named": {
+        "qwen3asr_name": "qwen3-asr-0.6B-int8-convrot.safetensors"
+      }
+    },
+    {
+      "id": 16,
+      "type": "OmniVoiceVoiceDesign",
+      "pos": [
+        1574.3870035134746,
+        -890.7824726877433
+      ],
+      "size": [
+        270,
+        178
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "instruct",
+          "type": "STRING",
+          "links": [
+            38
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "OmniVoiceVoiceDesign"
+      },
+      "widgets_values": [
+        "auto",
+        "child",
+        "auto",
+        "auto",
+        "american accent",
+        "auto"
+      ],
+      "widgets_values_named": {
+        "gender": "auto",
+        "age": "child",
+        "pitch": "auto",
+        "style": "auto",
+        "accent": "american accent",
+        "dialect": "auto"
+      }
+    },
+    {
+      "id": 17,
+      "type": "Note",
+      "pos": [
+        668.92243539839,
+        -501.5114354576972
+      ],
+      "size": [
+        254.648387222636,
+        180.08551221137424
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "get from https://github.com/Aero-Ex/ComfyUI-Qwen3ASR\n\nmodel files from : https://huggingface.co/Aero-Ex/ComfyUI-Qwen3-ASR/tree/main"
+      ],
+      "widgets_values_named": {
+        "text": "get from https://github.com/Aero-Ex/ComfyUI-Qwen3ASR\n\nmodel files from : https://huggingface.co/Aero-Ex/ComfyUI-Qwen3-ASR/tree/main"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 18,
+      "type": "Note",
+      "pos": [
+        501.948514676715,
+        -1188.1326010708997
+      ],
+      "size": [
+        406.3454831755621,
+        145.42798748632566
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "get from https://github.com/Aero-Ex/ComfyUI-OmniVoice\nmodel files from: https://huggingface.co/Aero-Ex/OmniVoice/tree/main\nput them under models/omnivoice"
+      ],
+      "widgets_values_named": {
+        "text": "get from https://github.com/Aero-Ex/ComfyUI-OmniVoice\nmodel files from: https://huggingface.co/Aero-Ex/OmniVoice/tree/main\nput them under models/omnivoice"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
     }
   ],
   "links": [
     [
-      15,
+      27,
       1,
       0,
-      9,
+      12,
       0,
       "OMNIVOICE"
     ],
     [
-      16,
+      28,
       1,
       1,
-      9,
+      12,
       1,
       "OMNIVOICE_TOKENIZER"
     ],
     [
-      17,
+      29,
       3,
       0,
-      9,
+      12,
       3,
       "STRING"
     ],
     [
-      19,
-      9,
+      31,
+      13,
+      0,
+      14,
+      1,
+      "AUDIO"
+    ],
+    [
+      32,
+      15,
+      0,
+      14,
+      0,
+      "QWEN3ASR"
+    ],
+    [
+      38,
+      16,
+      0,
+      12,
+      5,
+      "STRING"
+    ],
+    [
+      30,
+      12,
       0,
       5,
       0,
       "AUDIO"
     ],
     [
-      25,
-      10,
+      39,
+      13,
       0,
-      9,
+      12,
       2,
       "AUDIO"
+    ],
+    [
+      40,
+      14,
+      0,
+      12,
+      4,
+      "STRING"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Group",
+      "bounding": [
+        924.2694300163794,
+        -1270.80123997831,
+        2142.5054422686676,
+        691.9284613528738
+      ],
+      "color": "#3f789e",
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "Cloning",
+      "bounding": [
+        928.8519190720269,
+        -556.5591076550255,
+        1299.484696330709,
+        565.99681206371
+      ],
+      "color": "#3f789e",
+      "flags": {}
+    }
+  ],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.485858938937876,
+      "scale": 0.8557168449057327,
       "offset": [
-        -442.5918985041237,
-        1079.411024475111
+        -199.57338823687928,
+        1605.9243815886655
       ]
     },
     "frontendVersion": "1.55.14",

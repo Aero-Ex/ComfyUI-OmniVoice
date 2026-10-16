@@ -1,6 +1,6 @@
 # ComfyUI-OmniVoice
 
-A native, dependency-free port of the OmniVoice TTS model (Qwen3 LLM + HiggsAudioV2 codec) for ComfyUI. No extra pip packages — runs on stock ComfyUI (INT8 checkpoints use ComfyUI's built-in quantization stack).
+dependency-free port of the OmniVoice TTS model (Qwen3 LLM + HiggsAudioV2 codec) for ComfyUI. No extra pip packages — runs on stock ComfyUI (INT8 checkpoints use ComfyUI's built-in quantization stack).
 
 ## Nodes
 
@@ -24,7 +24,8 @@ Only two ways:
 
 Download a ready single file from [Aero-Ex/OmniVoice](https://huggingface.co/Aero-Ex/OmniVoice) into `models/omnivoice/`:
 
-- `omnivoice.safetensors` (3.3GB, full quality)
+- `omnivoice-bf16.safetensors` (2.0GB, full quality, loads without a conversion copy)
+- `omnivoice.safetensors` (3.3GB, same model stored in fp32)
 - `omnivoice-int8.safetensors` (1.1GB, INT8-ConvRot, ~86% top-1 agreement with full)
 
 
@@ -52,5 +53,6 @@ Keep normal punctuation spacing around tags (`! Ha`, `. Phew` — never `!Ha` or
 Notes:
 
 - `ref_text` is required whenever `ref_audio` is connected (no ASR auto-transcription).
-- No output post-processing is applied — use standard ComfyUI audio nodes for gain/fades/trim.
+- `denoise` (on by default, as upstream): with a reference voice, generate clean audio. Turn it off to also carry over the reference's recording character — measurably closer voice match (speaker similarity +0.003), but noise and room come along.
+- `postprocess_output` (on by default) applies upstream's output cleanup: long pauses trimmed, loudness matched to the reference (or peak-normalized without one), 0.1 s fades and padding. Turn it off for the raw decoder output.
 - Checkpoint picks: bf16 for tags + voice-design prompts (most robust); int8 for plain prompts (same quality, smaller). Same seed can give different takes across checkpoints — pin a keeper seed per setup.

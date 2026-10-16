@@ -1,5 +1,3 @@
-import math
-
 import torch
 
 # Silence processing for reference-audio preparation. Mirrors the reference
@@ -44,31 +42,34 @@ def _slice_ms(x, sample_rate, start_ms, end_ms=None):
     return data
 
 
-def _dbfs(window):
-    if window.numel() == 0:
-        return float("-inf")
-    rms = window.to(torch.float64).pow(2).mean().sqrt().item()
-    if rms <= 0:
-        return float("-inf")
-    return 20.0 * math.log10(rms / 32768.0)
+def _window_dbfs(x, sample_rate, starts_ms, length_ms):
+    """dBFS of each pydub millisecond window [start, start + length), from one running sum of squares."""
+    total = x.shape[0]
+    seg_len_ms = _seg_len_ms(total, sample_rate)
+    energy = torch.cat((torch.zeros(1, dtype=torch.float64), x.to(torch.float64).square().cumsum(0)))
+    a = [_parse_ms(min(s, seg_len_ms), seg_len_ms, sample_rate) for s in starts_ms]
+    b = [_parse_ms(min(s + length_ms, seg_len_ms), seg_len_ms, sample_rate) for s in starts_ms]
+    n = torch.tensor([max(e - s, 0) for s, e in zip(a, b)], dtype=torch.float64)
+    sums = energy[torch.tensor(b).clamp(max=total)] - energy[torch.tensor(a).clamp(max=total)]
+    rms = (sums / n.clamp(min=1)).sqrt()
+    # Windows sliced past the end are zero-padded by pydub, so they average over their full length.
+    return torch.where((n > 0) & (rms > 0), 20.0 * torch.log10(rms / 32768.0), float("-inf"))
 
 
 def detect_leading_silence(x, sample_rate, silence_threshold=-50.0, chunk_ms=10):
     """Return the millisecond index where leading silence ends."""
-    total = x.shape[0]
-    seg_len_ms = _seg_len_ms(total, sample_rate)
-    trim_ms = 0
-    while trim_ms < seg_len_ms:
-        if not (_dbfs(_slice_ms(x, sample_rate, trim_ms, trim_ms + chunk_ms)) < silence_threshold):
-            break
-        trim_ms += chunk_ms
+    seg_len_ms = _seg_len_ms(x.shape[0], sample_rate)
+    starts = list(range(0, seg_len_ms, chunk_ms))
+    if not starts:
+        return 0
+    loud = (~(_window_dbfs(x, sample_rate, starts, chunk_ms) < silence_threshold)).nonzero()
+    trim_ms = starts[int(loud[0])] if len(loud) else len(starts) * chunk_ms
     return min(trim_ms, seg_len_ms)
 
 
 def detect_silence(x, sample_rate, min_silence_ms=1000, silence_thresh=-16, seek_step_ms=1):
     """Return silent [[start, end]] millisecond ranges."""
-    total = x.shape[0]
-    seg_len_ms = _seg_len_ms(total, sample_rate)
+    seg_len_ms = _seg_len_ms(x.shape[0], sample_rate)
     if seg_len_ms < min_silence_ms:
         return []
 
@@ -77,11 +78,8 @@ def detect_silence(x, sample_rate, min_silence_ms=1000, silence_thresh=-16, seek
     if last_slice_start % seek_step_ms:
         slice_starts.append(last_slice_start)
 
-    silence_starts = []
-    for i in slice_starts:
-        if _dbfs(_slice_ms(x, sample_rate, i, i + min_silence_ms)) <= silence_thresh:
-            silence_starts.append(i)
-
+    silent = _window_dbfs(x, sample_rate, slice_starts, min_silence_ms) <= silence_thresh
+    silence_starts = [slice_starts[i] for i in silent.nonzero().flatten().tolist()]
     if not silence_starts:
         return []
 
@@ -156,8 +154,8 @@ def remove_silence_edges(x, sample_rate, lead_ms=100, trail_ms=300, silence_thre
 
 
 def remove_silence(x, sample_rate, mid_ms=300, lead_ms=100, trail_ms=300):
-    """Remove middle silences longer than mid_ms and trim edges."""
-    wave = _to_int16(x.reshape(-1))
+    """Remove middle silences longer than mid_ms and trim edges. Runs on CPU; returns x's dtype and device."""
+    wave = _to_int16(x.reshape(-1).cpu())
 
     if mid_ms > 0:
         segments = split_on_silence(
@@ -168,4 +166,24 @@ def remove_silence(x, sample_rate, mid_ms=300, lead_ms=100, trail_ms=300):
         wave = torch.cat(segments, dim=0) if segments else wave[:0]
 
     wave = remove_silence_edges(wave, sample_rate, lead_ms, trail_ms, -50)
-    return _from_int16(wave).to(x.dtype).reshape(x.shape[:-1] + (-1,))
+    return _from_int16(wave).to(x.device, x.dtype).reshape(x.shape[:-1] + (-1,))
+
+
+def postprocess_output(wave, sample_rate, ref_rms):
+    """Upstream output post-processing on a [C, T] waveform: trim long pauses, restore the
+    reference loudness (or peak-normalize to 0.5 without a reference), then fade and pad 0.1 s."""
+    wave = remove_silence(wave, sample_rate, mid_ms=500, lead_ms=100, trail_ms=100)
+    if ref_rms is not None and ref_rms < 0.1:
+        wave = wave * ref_rms / 0.1
+    elif ref_rms is None:
+        peak = wave.abs().max()
+        if peak > 1e-6:
+            wave = wave / peak * 0.5
+    if wave.shape[-1] == 0:
+        return wave
+    k = min(int(0.1 * sample_rate), wave.shape[-1] // 2)
+    if k > 0:
+        ramp = torch.linspace(0, 1, k, dtype=wave.dtype, device=wave.device)
+        wave = torch.cat((wave[..., :k] * ramp, wave[..., k:-k], wave[..., -k:] * ramp.flip(0)), dim=-1)
+    pad = wave.new_zeros(*wave.shape[:-1], int(0.1 * sample_rate))
+    return torch.cat((pad, wave, pad), dim=-1)

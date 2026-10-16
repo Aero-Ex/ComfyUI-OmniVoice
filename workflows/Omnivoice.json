@@ -1,8 +1,8 @@
 {
   "id": "1ac6bdee-2527-4913-809f-cfe1fc1663d3",
   "revision": 0,
-  "last_node_id": 18,
-  "last_link_id": 40,
+  "last_node_id": 21,
+  "last_link_id": 42,
   "nodes": [
     {
       "id": 1,
@@ -39,10 +39,10 @@
         "Node name for S&R": "OmniVoiceLoader"
       },
       "widgets_values": [
-        "omnivoice.safetensors"
+        "omnivoice-int8.safetensors"
       ],
       "widgets_values_named": {
-        "omnivoice_name": "omnivoice.safetensors"
+        "omnivoice_name": "omnivoice-int8.safetensors"
       }
     },
     {
@@ -73,50 +73,10 @@
         "Node name for S&R": "PrimitiveStringMultiline"
       },
       "widgets_values": [
-        "I don't really care what you call me. I've been a silent spectator, watching species evolve, empires rise and fall. But always remember, I am mighty and enduring. Respect me and I'll nurture you; ignore me and you shall face."
+        "The lighthouse at the end of the world had not been lit for thirty years, but every evening, just before the sun slipped beneath the grey edge of the sea, Mara climbed its two hundred and twelve steps anyway.\n\nShe had counted them as a child, when her grandfather still kept the lamp. Back then the stairs had seemed endless, a spiral of cold iron that rang under her small shoes like a bell. Now she counted them out of habit, the way some people hum a song they no longer remember the words to.\n\nAt the top, the great lens sat in its brass cradle, dusty and silent. Mara wiped it with the same cloth her grandfather had used, slow circles, patient and careful. He used to say that a lighthouse was not really a building at all. It was a promise. A promise that somewhere out in the dark, someone was paying attention.\n\nThe village below had mostly emptied over the years. The fishing boats grew fewer, then older, then gone. The bakery closed, and then the school, and finally the little station where the evening train used to stop with a tired sigh. People moved to the cities, where the lights never went out and nobody needed a promise from a tower on a rock.\n\nBut Mara stayed. She told herself it was because of the garden, or the cottage, or the stubborn old cat who refused to travel. The truth was simpler, and harder to say out loud. She stayed because leaving felt like breaking the promise.\n\nOn this particular evening, the wind came in sharp and salty from the north. The clouds were low and heavy, the color of wet slate. Out\non the water, the waves had begun to stand up and leys did before a storm. Mara finished wiping the lensand was about to turn for the stairs when she saw it.\nA light. Small, flickering, far out past the reef.At first she thought it was a star caught between twell, and rose again, moving with the swell. A boat. Asmall one, by the look of it, and much too close to better ships than that.\n\nHer heart began to pound. There was no radio in the no way to call the coast guard from up here. Thenearest working phone was in the village, twenty minutes away on foot, and the boat did not have twenty minutes.\n\nMara looked at the lamp.\n\nHer grandfather had shown her how it worked, years ake this one. The fuel tank, the wick, the clockwork\nthat turned the lens. She had been nine years old anng. She had been watching the beam sweep across the\nwater like a great slow hand, and wondering where iter the horizon.\n\nNow she tried to remember. Her fingers found the old valve, stiff with rust. She leaned her whole weight against it until something gave with a groan. The smell of oil rose into the cold air. Somewhere in the base of the tower, a mechanism she did not understand\ncoughed and shuddered.\n\nShe struck a match. It blew out. She struck another,and touched it to the wick.\n\nFor a moment, nothing happened. Then a small blue flame crept along the edge, turned yellow, and grew. The lens caught it and threw it\noutward, magnified a thousand times, a beam of pure .\n\nThe clockwork began to turn.\n\nSlowly, the light swept across the sea. Once. Twice.the little boat again, and this time it was turning.Turning away from the reef, away from the rocks, toward the narrow channel her grandfather had always called the safe road home.\n\nShe did not move until the boat reached the harbor. She watched its tiny light bob past the breakwater and finally go still beside the\nempty pier. Only then did she realize she was crying all at once.\n\nThe next morning, a young fisherman knocked on her csted and grateful. He said he had been lost in the\nstorm, certain he was finished, and then the old ligomething out of a story.\n\nMara made him tea and did not tell him that she had  someone to need it.\n\nThat evening, she climbed the two hundred and twelvewhen the sun went down, she lit the lamp."
       ],
       "widgets_values_named": {
-        "value": "I don't really care what you call me. I've been a silent spectator, watching species evolve, empires rise and fall. But always remember, I am mighty and enduring. Respect me and I'll nurture you; ignore me and you shall face."
-      }
-    },
-    {
-      "id": 5,
-      "type": "SaveAudioAdvanced",
-      "pos": [
-        2517.4415592967657,
-        -1120.403424951187
-      ],
-      "size": [
-        539.3289121398063,
-        249.2382905736746
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "link": 30
-        }
-      ],
-      "outputs": [
-        {
-          "name": "audio",
-          "type": "AUDIO",
-          "links": null
-        }
-      ],
-      "properties": {},
-      "widgets_values": [
-        "audio/ComfyUI",
-        "mp3",
-        "V0"
-      ],
-      "widgets_values_named": {
-        "filename_prefix": "audio/ComfyUI",
-        "format": "mp3",
-        "format.quality": "V0"
+        "value": "The lighthouse at the end of the world had not been lit for thirty years, but every evening, just before the sun slipped beneath the grey edge of the sea, Mara climbed its two hundred and twelve steps anyway.\n\nShe had counted them as a child, when her grandfather still kept the lamp. Back then the stairs had seemed endless, a spiral of cold iron that rang under her small shoes like a bell. Now she counted them out of habit, the way some people hum a song they no longer remember the words to.\n\nAt the top, the great lens sat in its brass cradle, dusty and silent. Mara wiped it with the same cloth her grandfather had used, slow circles, patient and careful. He used to say that a lighthouse was not really a building at all. It was a promise. A promise that somewhere out in the dark, someone was paying attention.\n\nThe village below had mostly emptied over the years. The fishing boats grew fewer, then older, then gone. The bakery closed, and then the school, and finally the little station where the evening train used to stop with a tired sigh. People moved to the cities, where the lights never went out and nobody needed a promise from a tower on a rock.\n\nBut Mara stayed. She told herself it was because of the garden, or the cottage, or the stubborn old cat who refused to travel. The truth was simpler, and harder to say out loud. She stayed because leaving felt like breaking the promise.\n\nOn this particular evening, the wind came in sharp and salty from the north. The clouds were low and heavy, the color of wet slate. Out\non the water, the waves had begun to stand up and leys did before a storm. Mara finished wiping the lensand was about to turn for the stairs when she saw it.\nA light. Small, flickering, far out past the reef.At first she thought it was a star caught between twell, and rose again, moving with the swell. A boat. Asmall one, by the look of it, and much too close to better ships than that.\n\nHer heart began to pound. There was no radio in the no way to call the coast guard from up here. Thenearest working phone was in the village, twenty minutes away on foot, and the boat did not have twenty minutes.\n\nMara looked at the lamp.\n\nHer grandfather had shown her how it worked, years ake this one. The fuel tank, the wick, the clockwork\nthat turned the lens. She had been nine years old anng. She had been watching the beam sweep across the\nwater like a great slow hand, and wondering where iter the horizon.\n\nNow she tried to remember. Her fingers found the old valve, stiff with rust. She leaned her whole weight against it until something gave with a groan. The smell of oil rose into the cold air. Somewhere in the base of the tower, a mechanism she did not understand\ncoughed and shuddered.\n\nShe struck a match. It blew out. She struck another,and touched it to the wick.\n\nFor a moment, nothing happened. Then a small blue flame crept along the edge, turned yellow, and grew. The lens caught it and threw it\noutward, magnified a thousand times, a beam of pure .\n\nThe clockwork began to turn.\n\nSlowly, the light swept across the sea. Once. Twice.the little boat again, and this time it was turning.Turning away from the reef, away from the rocks, toward the narrow channel her grandfather had always called the safe road home.\n\nShe did not move until the boat reached the harbor. She watched its tiny light bob past the breakwater and finally go still beside the\nempty pier. Only then did she realize she was crying all at once.\n\nThe next morning, a young fisherman knocked on her csted and grateful. He said he had been lost in the\nstorm, certain he was finished, and then the old ligomething out of a story.\n\nMara made him tea and did not tell him that she had  someone to need it.\n\nThat evening, she climbed the two hundred and twelvewhen the sun went down, she lit the lamp."
       }
     },
     {
@@ -128,10 +88,10 @@
       ],
       "size": [
         400,
-        446
+        494
       ],
       "flags": {},
-      "order": 8,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
@@ -166,15 +126,6 @@
             "name": "ref_text"
           },
           "link": 40
-        },
-        {
-          "name": "instruct",
-          "shape": 7,
-          "type": "STRING",
-          "widget": {
-            "name": "instruct"
-          },
-          "link": 38
         }
       ],
       "outputs": [
@@ -182,7 +133,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            30
+            41
           ]
         }
       ],
@@ -196,13 +147,15 @@
         0,
         15,
         30,
-        954384136945163,
-        "randomize",
+        366354064623771,
+        "fixed",
         5,
         "",
         "",
         "",
-        0
+        0,
+        true,
+        true
       ],
       "widgets_values_named": {
         "prompt": "",
@@ -211,13 +164,15 @@
         "class_temperature": 0,
         "chunk_duration": 15,
         "chunk_threshold": 30,
-        "seed": 954384136945163,
-        "control_after_generate": "randomize",
+        "seed": 366354064623771,
+        "control_after_generate": "fixed",
         "position_temperature": 5,
         "ref_text": "",
         "language": "",
         "instruct": "",
-        "duration": 0
+        "duration": 0,
+        "postprocess_output": true,
+        "denoise": true
       }
     },
     {
@@ -249,11 +204,11 @@
         "Node name for S&R": "LoadAudio"
       },
       "widgets_values": [
-        "voxcpm2_00006.flac [output]",
+        "seedtts_ref_en_1.wav",
         ""
       ],
       "widgets_values_named": {
-        "audio": "voxcpm2_00006.flac [output]",
+        "audio": "seedtts_ref_en_1.wav",
         "upload": ""
       }
     },
@@ -269,7 +224,7 @@
         316
       ],
       "flags": {},
-      "order": 7,
+      "order": 8,
       "mode": 4,
       "inputs": [
         {
@@ -292,6 +247,7 @@
       "outputs": [
         {
           "name": "transcription",
+          "shape": 6,
           "type": "STRING",
           "links": [
             40
@@ -299,16 +255,19 @@
         },
         {
           "name": "language",
+          "shape": 6,
           "type": "STRING",
           "links": null
         },
         {
           "name": "srt",
+          "shape": 6,
           "type": "STRING",
           "links": null
         },
         {
           "name": "word_srt",
+          "shape": 6,
           "type": "STRING",
           "links": null
         }
@@ -345,8 +304,8 @@
         -486.5591076550255
       ],
       "size": [
-        361.1740520535607,
-        86.00335087154744
+        501.18901850539424,
+        86.0019993241869
       ],
       "flags": {},
       "order": 3,
@@ -365,10 +324,10 @@
         "Node name for S&R": "Qwen3ASRLoader"
       },
       "widgets_values": [
-        "qwen3-asr-0.6B-int8-convrot.safetensors"
+        "qwen3-asr-1.7B.safetensors"
       ],
       "widgets_values_named": {
-        "qwen3asr_name": "qwen3-asr-0.6B-int8-convrot.safetensors"
+        "qwen3asr_name": "qwen3-asr-1.7B.safetensors"
       }
     },
     {
@@ -390,28 +349,26 @@
         {
           "name": "instruct",
           "type": "STRING",
-          "links": [
-            38
-          ]
+          "links": []
         }
       ],
       "properties": {
         "Node name for S&R": "OmniVoiceVoiceDesign"
       },
       "widgets_values": [
+        "female",
+        "teenager",
         "auto",
-        "child",
         "auto",
-        "auto",
-        "american accent",
+        "russian accent",
         "auto"
       ],
       "widgets_values_named": {
-        "gender": "auto",
-        "age": "child",
+        "gender": "female",
+        "age": "teenager",
         "pitch": "auto",
         "style": "auto",
-        "accent": "american accent",
+        "accent": "russian accent",
         "dialect": "auto"
       }
     },
@@ -466,6 +423,128 @@
       },
       "color": "#432",
       "bgcolor": "#653"
+    },
+    {
+      "id": 19,
+      "type": "PreviewAudio",
+      "pos": [
+        2365.4420391397393,
+        -1103.2194560604307
+      ],
+      "size": [
+        417.4700300317937,
+        124.23706449749875
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 41
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 20,
+      "type": "LoadVideo",
+      "pos": [
+        567.2692040949617,
+        -163.25191777583592
+      ],
+      "size": [
+        347.0463171648571,
+        595.8627026313018
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            42
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "oldguy.mp4",
+        "image"
+      ],
+      "widgets_values_named": {
+        "file": "oldguy.mp4",
+        "upload": "image"
+      }
+    },
+    {
+      "id": 21,
+      "type": "GetVideoComponents",
+      "pos": [
+        1150,
+        -110
+      ],
+      "size": [
+        193.4,
+        106
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 42
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "name": "bit_depth",
+          "type": "COMBO",
+          "links": null
+        },
+        {
+          "name": "color_space",
+          "type": "COMBO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "GetVideoComponents"
+      }
     }
   ],
   "links": [
@@ -510,22 +589,6 @@
       "QWEN3ASR"
     ],
     [
-      38,
-      16,
-      0,
-      12,
-      5,
-      "STRING"
-    ],
-    [
-      30,
-      12,
-      0,
-      5,
-      0,
-      "AUDIO"
-    ],
-    [
       39,
       13,
       0,
@@ -540,6 +603,22 @@
       12,
       4,
       "STRING"
+    ],
+    [
+      41,
+      12,
+      0,
+      19,
+      0,
+      "AUDIO"
+    ],
+    [
+      42,
+      20,
+      0,
+      21,
+      0,
+      "VIDEO"
     ]
   ],
   "groups": [
@@ -571,13 +650,13 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.8557168449057327,
+      "scale": 0.37138973933515224,
       "offset": [
-        -199.57338823687928,
-        1605.9243815886655
+        236.57243914028817,
+        1811.4983738355777
       ]
     },
-    "frontendVersion": "1.55.14",
+    "frontendVersion": "1.55.17",
     "VHS_latentpreview": false,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": true,

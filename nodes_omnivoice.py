@@ -6,6 +6,7 @@ import comfy.utils
 import comfy.model_management
 import comfy.model_patcher
 import comfy.ops
+import comfy.storage
 import torch
 
 from .omnivoice import audio_utils
@@ -33,7 +34,7 @@ class OmniVoiceLoader:
     def INPUT_TYPES(cls):
         return {"required": {
             "omnivoice_name": (folder_paths.get_filename_list("omnivoice"), {
-                "tooltip": "Single-file OmniVoice checkpoint (see convert_omnivoice_checkpoint.py)."}),
+                "tooltip": "Single-file OmniVoice checkpoint from huggingface.co/Aero-Ex/OmniVoice."}),
         }}
 
     RETURN_TYPES = ("OMNIVOICE", "OMNIVOICE_TOKENIZER")
@@ -51,8 +52,7 @@ class OmniVoiceLoader:
                 or "audio_tokenizer.quantizer.quantizers.0.codebook.embed" not in sd):
             raise RuntimeError(
                 "ERROR: not a single-file OmniVoice checkpoint. "
-                "Merge the model folder first: "
-                "python convert_omnivoice_checkpoint.py <model_folder> <out.safetensors>"
+                "Use omnivoice.safetensors or omnivoice-int8.safetensors from huggingface.co/Aero-Ex/OmniVoice."
             )
 
         config = json.loads(metadata["omnivoice.config"])
@@ -72,41 +72,28 @@ class OmniVoiceLoader:
         codec_sd = {k[len(codec_prefix):]: v for k, v in sd.items() if k.startswith(codec_prefix)}
         model_sd = {k: v for k, v in sd.items() if not k.startswith(codec_prefix)}
 
+        load_device = comfy.model_management.get_torch_device()
+        offload_device = comfy.model_management.unet_offload_device()
         dtype = comfy.model_management.unet_dtype(model_params=-1, supported_dtypes=[torch.bfloat16, torch.float32])
-        manual_cast_dtype = comfy.model_management.unet_manual_cast(dtype, comfy.model_management.get_torch_device(), supported_dtypes=[torch.bfloat16, torch.float32])
-        # Native quantized path (e.g. --dtype int8 checkpoints): detected from
-        # per-layer .comfy_quant keys, consumed by mixed-precision ops.
+        manual_cast_dtype = comfy.model_management.unet_manual_cast(dtype, load_device, supported_dtypes=[torch.bfloat16, torch.float32])
+        # INT8 checkpoints carry per-layer .comfy_quant keys, consumed by the mixed-precision ops.
         quant = comfy.utils.detect_layer_quantization(sd, "")
         if quant is not None:
             operations = comfy.ops.mixed_precision_ops(quant, dtype)
             codec_ops = comfy.ops.mixed_precision_ops(quant, torch.float32)
         else:
-            operations = comfy.ops.pick_operations(dtype, manual_cast_dtype, load_device=comfy.model_management.get_torch_device())
+            operations = comfy.ops.pick_operations(dtype, manual_cast_dtype, load_device=load_device)
             codec_ops = comfy.ops.disable_weight_init
 
-        model = OmniVoiceModel(
-            config,
-            device=comfy.model_management.unet_offload_device(),
-            dtype=dtype,
-            operations=operations,
-        )
-        model.load_state_dict(model_sd, assign=False)
+        fast_disk = comfy.storage.state_dict_fast_disk(sd)
+        model = OmniVoiceModel(config, device=offload_device, dtype=dtype, operations=operations)
+        model_patcher = comfy.model_patcher.CoreModelPatcher(model, load_device=load_device, offload_device=offload_device, fast_disk=fast_disk)
+        # Dynamic VRAM can use the checkpoint tensors in place when they are already in the compute dtype.
+        model.load_state_dict(model_sd, assign=model_patcher.is_dynamic() and model_sd["llm.norm.weight"].dtype == dtype)
         model.text_tokenizer = QwenBpeTokenizer(json.loads(metadata["omnivoice.tokenizer"]))
-
-        tokenizer = OmniVoiceTokenizer(
-            codec_config,
-            device=comfy.model_management.unet_offload_device(),
-            dtype=torch.float32,
-            operations=codec_ops,
-        )
-        tokenizer.load_state_dict(codec_sd, assign=False)
-
-        load_device = comfy.model_management.get_torch_device()
-        offload_device = comfy.model_management.unet_offload_device()
-        model_patcher = comfy.model_patcher.ModelPatcher(
-            model, load_device=load_device, offload_device=offload_device)
-        tokenizer_patcher = comfy.model_patcher.ModelPatcher(
-            tokenizer, load_device=load_device, offload_device=offload_device)
+        tokenizer = OmniVoiceTokenizer(codec_config, device=offload_device, dtype=torch.float32, operations=codec_ops)
+        tokenizer.load_state_dict(codec_sd)
+        tokenizer_patcher = comfy.model_patcher.CoreModelPatcher(tokenizer, load_device=load_device, offload_device=offload_device, fast_disk=fast_disk)
         return (model_patcher, tokenizer_patcher)
 
 
@@ -143,170 +130,103 @@ class OmniVoiceGenerate:
             "tokenizer": ("OMNIVOICE_TOKENIZER", {"tooltip": "The OmniVoice audio tokenizer to use."}),
             "prompt": ("STRING", {"multiline": True, "tooltip": "The text prompt to generate audio from."}),
             "num_steps": ("INT", {"default": 32, "min": 1, "max": 256, "step": 1, "tooltip": "Iterative unmasking steps."}),
-            "guidance_scale": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1, "tooltip": "Classifier-free guidance scale."}),
-            "class_temperature": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Token sampling temperature. 0 is greedy (seed has no effect on token choice)."}),
+            "guidance_scale": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 10.0, "step": 0.1, "tooltip": "Classifier-free guidance scale. 0 skips the unconditional pass."}),
+            "class_temperature": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 2.0, "step": 0.05, "tooltip": "Token sampling temperature. 0 is greedy."}),
             "chunk_duration": ("FLOAT", {"default": 15.0, "min": 0.0, "max": 120.0, "step": 0.5, "tooltip": "Target chunk length in seconds for long outputs. 0 disables chunking."}),
             "chunk_threshold": ("FLOAT", {"default": 30.0, "min": 0.0, "max": 3600.0, "step": 1.0, "tooltip": "Estimated output length in seconds above which chunking activates. 0 disables chunking."}),
-            "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "Random seed. Only used when a temperature is above 0."}),
+            "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "tooltip": "Random seed for the sampling temperatures."}),
         }, "optional": {
-            "position_temperature": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1, "tooltip": "Unmask-order temperature. 0 is greedy (seed has no effect)."}),
+            "position_temperature": ("FLOAT", {"default": 5.0, "min": 0.0, "max": 10.0, "step": 0.1, "tooltip": "Unmask-order temperature. 0 is greedy."}),
             "ref_audio": ("AUDIO", {"tooltip": "Reference audio for voice cloning."}),
             "ref_text": ("STRING", {"multiline": True, "tooltip": "Transcription of the reference audio."}),
             "language": ("STRING", {"default": "", "tooltip": "Language name or code (e.g. English, en). Empty for auto."}),
             "instruct": ("STRING", {"default": "", "tooltip": "Voice style instruction (e.g. female, young adult). Empty for auto."}),
             "duration": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 3600.0, "step": 0.1, "tooltip": "Output duration in seconds. 0 estimates from text length."}),
+            "postprocess_output": ("BOOLEAN", {"default": True, "tooltip": "Upstream post-processing: trim long pauses, match the reference loudness (or normalize), fade and pad the edges."}),
+            "denoise": ("BOOLEAN", {"default": True, "tooltip": "With a reference voice, ask for clean studio output. Off keeps the reference's recording character too, which clones the voice slightly more closely but also copies its noise and room."}),
         }}
 
     RETURN_TYPES = ("AUDIO",)
     FUNCTION = "execute"
     CATEGORY = "OmniVoice"
 
-    def execute(self, model, tokenizer, prompt, num_steps=32,
-                guidance_scale=2.0, class_temperature=0.0,
-                position_temperature=5.0,
-                chunk_duration=15.0, chunk_threshold=30.0, seed=0,
-                ref_audio=None, ref_text="", language="", instruct="", duration=0.0):
-        # Loader wraps both models in ModelPatchers; unwrap for direct use.
-        llm = model.model if isinstance(model, comfy.model_patcher.ModelPatcher) else model
-        codec = tokenizer.model if isinstance(tokenizer, comfy.model_patcher.ModelPatcher) else tokenizer
-        load_device = comfy.model_management.get_torch_device()
+    def execute(self, model, tokenizer, prompt, num_steps=32, guidance_scale=2.0, class_temperature=0.0,
+                chunk_duration=15.0, chunk_threshold=30.0, seed=0, position_temperature=5.0,
+                ref_audio=None, ref_text="", language="", instruct="", duration=0.0, postprocess_output=True, denoise=True):
+        comfy.model_management.load_models_gpu([model, tokenizer])
+        llm, codec = model.model, tokenizer.model
+        device = comfy.model_management.get_torch_device()
+        generator = torch.Generator(device=device).manual_seed(seed)
 
-        # Dynamic VRAM: evicts other resident models as needed to fit this run.
-        if isinstance(model, comfy.model_patcher.ModelPatcher):
-            comfy.model_management.load_models_gpu([model], force_full_load=True)
-        if isinstance(tokenizer, comfy.model_patcher.ModelPatcher):
-            comfy.model_management.load_models_gpu([tokenizer], force_full_load=True)
+        lang = resolve_language(language or None)
+        instruct_resolved = resolve_instruct(instruct or None, use_zh=bool(prompt and ZH_RE.search(prompt)))
 
-        try:
-            if getattr(llm, "text_tokenizer", None) is None:
-                raise RuntimeError("OmniVoiceGenerate: the model has no text tokenizer.")
-            torch.manual_seed(seed)
-
-            lang = resolve_language(language or None)
-            use_zh = bool(prompt and ZH_RE.search(prompt))
-            instruct_resolved = resolve_instruct(instruct or None, use_zh=use_zh)
-
-            ref_audio_tokens = None
-            if ref_audio is not None:
-                if not ref_text:
-                    raise RuntimeError(
-                        "OmniVoiceGenerate: ref_text is required when ref_audio is provided "
-                        "(the native port has no ASR auto-transcription)."
-                    )
-                waveform = ref_audio["waveform"]
-                if waveform.shape[1] > 1:
-                    waveform = waveform.mean(dim=1, keepdim=True)
-                if ref_audio["sample_rate"] != codec.sample_rate:
-                    waveform = comfy.audio.resample(waveform, ref_audio["sample_rate"], codec.sample_rate)
-                ref_wav = waveform.to(load_device).reshape(-1)
-                ref_rms = float(torch.sqrt(torch.mean(ref_wav ** 2)))
-                if 0 < ref_rms < 0.1:
-                    ref_wav = ref_wav * 0.1 / ref_rms
-                ref_wav = audio_utils.remove_silence(ref_wav, codec.sample_rate, mid_ms=200, lead_ms=100, trail_ms=200)
-                if ref_wav.shape[-1] == 0:
-                    raise RuntimeError("OmniVoiceGenerate: reference audio is empty after silence removal.")
-                hop_length = codec.pad * 2
-                clip_size = int(ref_wav.shape[-1] % hop_length)
-                if clip_size > 0:
-                    ref_wav = ref_wav[..., :-clip_size]
-                with torch.inference_mode():
-                    ref_audio_tokens = codec.encode(ref_wav.reshape(1, 1, -1)).squeeze(0)
-                ref_text = add_punctuation(ref_text)
-
-            estimator = RuleDurationEstimator()
-            if ref_audio_tokens is None or not ref_text:
-                base_est_text, base_est_tokens = "Nice to meet you.", 25
-            else:
-                base_est_text, base_est_tokens = ref_text, ref_audio_tokens.size(-1)
-            est_total = max(1, int(estimator.estimate_duration(
-                prompt, base_est_text, base_est_tokens)))
-            if duration > 0:
-                num_target_tokens = max(1, round(duration * codec.frame_rate))
-            else:
-                # Mirrors upstream _estimate_target_tokens: rule-based estimate
-                # against the reference rate, or "Nice to meet you." / 25 tokens
-                # when cloning without a reference.
-                num_target_tokens = est_total
-
-            def estimate_chunk(chunk_text, r_text, r_len):
-                if r_len is None or not r_text:
-                    r_text, r_len = "Nice to meet you.", 25
-                return max(1, int(estimator.estimate_duration(chunk_text, r_text, r_len)))
-
-            chunks = None
-            if (chunk_threshold > 0 and chunk_duration > 0
-                    and num_target_tokens > chunk_threshold * codec.frame_rate
-                    and len(prompt) > 0):
-                avg_tokens_per_char = num_target_tokens / len(prompt)
-                text_chunk_len = int(chunk_duration * codec.frame_rate / avg_tokens_per_char) \
-                    if avg_tokens_per_char > 0 else 0
-                if text_chunk_len > 0:
-                    split = chunk_text_punctuation(prompt, text_chunk_len, min_chunk_len=3)
-                    if len(split) > 1:
-                        chunks = split
-
-            def run_chunk(chunk_text, chunk_tokens, r_text, r_tokens):
-                cond = llm.build_inference_inputs(
-                    chunk_text, chunk_tokens,
-                    ref_text=r_text,
-                    ref_audio_tokens=r_tokens,
-                    lang=lang,
-                    instruct=instruct_resolved,
-                    device=load_device,
+        ref_audio_tokens = None
+        ref_rms = None
+        if ref_audio is not None:
+            if not ref_text:
+                raise RuntimeError(
+                    "OmniVoiceGenerate: ref_text is required when ref_audio is provided "
+                    "(the native port has no ASR auto-transcription)."
                 )
-                with torch.inference_mode():
-                    return llm.generate(
-                        cond["input_ids"], cond["audio_mask"], chunk_tokens,
-                        num_steps=num_steps,
-                        guidance_scale=guidance_scale,
-                        class_temp=class_temperature,
-                        position_temp=position_temperature,
-                        callback=lambda s, b=run_chunk.done: pbar.update_absolute(b + s),
-                    )
+            ref_wav = comfy.audio.resample(ref_audio["waveform"][0].float().mean(0), ref_audio["sample_rate"], codec.sample_rate).cpu()
+            ref_rms = float(ref_wav.square().mean().sqrt())
+            if 0 < ref_rms < 0.1:
+                ref_wav = ref_wav * 0.1 / ref_rms
+            ref_wav = audio_utils.remove_silence(ref_wav, codec.sample_rate, mid_ms=200, lead_ms=100, trail_ms=200)
+            if ref_wav.shape[-1] == 0:
+                raise RuntimeError("OmniVoiceGenerate: reference audio is empty after silence removal.")
+            ref_wav = ref_wav[:ref_wav.shape[-1] // (codec.pad * 2) * (codec.pad * 2)]
+            ref_audio_tokens = codec.encode(ref_wav.to(device).view(1, 1, -1)).squeeze(0)
+            ref_text = add_punctuation(ref_text)
 
-            if chunks is None:
-                pbar = comfy.utils.ProgressBar(num_steps)
-                run_chunk.done = 0
-                with torch.inference_mode():
-                    audio_tokens = run_chunk(prompt, num_target_tokens,
-                                             ref_text or None, ref_audio_tokens)
-                    waveform = codec.decode(audio_tokens).cpu()
+        estimator = RuleDurationEstimator()
+
+        def estimate(text, r_text, r_len):
+            # Upstream rates the text against the reference, or "Nice to meet you." = 25 frames without one.
+            if r_len is None or not r_text:
+                r_text, r_len = "Nice to meet you.", 25
+            return max(1, int(estimator.estimate_duration(text, r_text, r_len)))
+
+        est_total = estimate(prompt, ref_text, ref_audio_tokens.shape[-1] if ref_audio_tokens is not None else None)
+        num_target_tokens = max(1, round(duration * codec.frame_rate)) if duration > 0 else est_total
+
+        chunks = [prompt]
+        if chunk_threshold > 0 and chunk_duration > 0 and num_target_tokens > chunk_threshold * codec.frame_rate and prompt:
+            text_chunk_len = int(chunk_duration * codec.frame_rate / (num_target_tokens / len(prompt)))
+            if text_chunk_len > 0:
+                split = chunk_text_punctuation(prompt, text_chunk_len, min_chunk_len=3)
+                if len(split) > 1:
+                    chunks = split
+
+        pbar = comfy.utils.ProgressBar(num_steps * len(chunks))
+        # Upstream _generate_chunked: per-chunk targets are re-estimated from text and scaled by
+        # estimate / request when a duration is given. Without a user reference, chunk 0 becomes
+        # the voice reference for the later chunks.
+        speed = est_total / num_target_tokens if duration > 0 else 1.0
+        wav_chunks = []
+        chunk_ref_text, chunk_ref_tokens = (ref_text, ref_audio_tokens) if ref_audio_tokens is not None else (None, None)
+        for ci, chunk_text in enumerate(chunks):
+            if len(chunks) == 1:
+                chunk_tokens = num_target_tokens
             else:
-                # Upstream _generate_chunked: per-chunk token targets re-estimated
-                # from text; an explicit duration scales them proportionally via
-                # speed = estimate / request. Without a user ref, chunk 0 output
-                # becomes the voice ref for later chunks.
-                pbar = comfy.utils.ProgressBar(num_steps * len(chunks))
-                run_chunk.done = 0
-                speed = est_total / num_target_tokens if duration > 0 and num_target_tokens > 0 else 1.0
-                wav_chunks = []
-                first_ref_tokens = None
-                with torch.inference_mode():
-                    for ci, chunk_text in enumerate(chunks):
-                        if ref_audio_tokens is not None:
-                            r_text, r_tokens = ref_text or None, ref_audio_tokens
-                        elif ci == 0:
-                            r_text, r_tokens = None, None
-                        else:
-                            r_text, r_tokens = chunks[0], first_ref_tokens
-                        chunk_tokens = estimate_chunk(
-                            chunk_text,
-                            r_text if r_text else (ref_text if ref_audio_tokens is not None else None),
-                            r_tokens.size(-1) if r_tokens is not None else None,
-                        )
-                        if speed != 1.0 and speed > 0:
-                            chunk_tokens = max(1, int(chunk_tokens / speed))
-                        tokens = run_chunk(chunk_text, chunk_tokens, r_text, r_tokens)
-                        if ci == 0 and ref_audio_tokens is None:
-                            first_ref_tokens = tokens[0].to(load_device)
-                        wav_chunks.append(codec.decode(tokens).cpu()[0])
-                        del tokens
-                        run_chunk.done += num_steps
-                waveform = cross_fade_chunks(wav_chunks, codec.sample_rate).unsqueeze(0)
-        finally:
-            comfy.model_management.soft_empty_cache()
-
-        return ({"waveform": waveform, "sample_rate": codec.sample_rate},)
+                chunk_tokens = estimate(chunk_text, chunk_ref_text, chunk_ref_tokens.shape[-1] if chunk_ref_tokens is not None else None)
+                if speed != 1.0:
+                    chunk_tokens = max(1, int(chunk_tokens / speed))
+            cond = llm.build_inference_inputs(chunk_text, chunk_tokens, ref_text=chunk_ref_text, ref_audio_tokens=chunk_ref_tokens,
+                                              lang=lang, instruct=instruct_resolved, denoise=denoise, device=device)
+            done = ci * num_steps
+            tokens = llm.generate(cond["input_ids"], cond["audio_mask"], chunk_tokens, generator,
+                                  num_steps=num_steps, guidance_scale=guidance_scale,
+                                  class_temp=class_temperature, position_temp=position_temperature,
+                                  callback=lambda s: pbar.update_absolute(done + s))
+            if ci == 0 and ref_audio_tokens is None and len(chunks) > 1:
+                chunk_ref_text, chunk_ref_tokens = chunk_text, tokens[0]
+            wav_chunks.append(codec.decode(tokens)[0].float().cpu())
+        waveform = cross_fade_chunks(wav_chunks, codec.sample_rate)
+        if postprocess_output:
+            waveform = audio_utils.postprocess_output(waveform, codec.sample_rate, ref_rms)
+        return ({"waveform": waveform.unsqueeze(0), "sample_rate": codec.sample_rate},)
 
 
 NODE_CLASS_MAPPINGS = {

@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import comfy.audio
+import comfy.model_management
 import comfy.ops
 from comfy.ldm.modules.attention import AttentionTensorContainer, ComfyAttention, optimized_attention
 
@@ -82,8 +83,7 @@ class DacEncoder(nn.Module):
     def conv_output_length(self, length):
         layers = [self.conv1] + [b.conv1 for b in self.block] + [self.conv2]
         for layer in layers:
-            w = layer.weight if not hasattr(layer, "parametrizations") else layer.parametrizations.weight.original1
-            length = _conv_output_length(length, w.shape[-1], layer.stride[0], layer.padding[0])
+            length = _conv_output_length(length, layer.kernel_size[0], layer.stride[0], layer.padding[0])
         return length
 
     def forward(self, x):
@@ -142,11 +142,7 @@ class DacDecoder(nn.Module):
 class EuclideanCodebook(nn.Module):
     def __init__(self, codebook_size, codebook_dim, device=None, dtype=None):
         super().__init__()
-        self.codebook_size = codebook_size
-        self.register_buffer("inited", torch.tensor([True], device=device, dtype=dtype))
-        self.register_buffer("cluster_size", torch.zeros(codebook_size, device=device, dtype=dtype))
-        self.register_buffer("embed", torch.zeros(codebook_size, codebook_dim, device=device, dtype=dtype))
-        self.register_buffer("embed_avg", torch.zeros(codebook_size, codebook_dim, device=device, dtype=dtype))
+        self.register_buffer("embed", torch.empty(codebook_size, codebook_dim, device=device, dtype=dtype))
 
     def quantize(self, x):
         embed = comfy.ops.cast_to_input(self.embed, x).t()
@@ -159,7 +155,7 @@ class EuclideanCodebook(nn.Module):
         return self.quantize(x.reshape((-1, shape[-1]))).view(*shape[:-1])
 
     def decode(self, indices):
-        return F.embedding(indices, self.embed.to(indices.device))
+        return F.embedding(indices, comfy.model_management.cast_to(self.embed, device=indices.device))
 
 
 class VectorQuantization(nn.Module):
@@ -260,62 +256,12 @@ class SemanticEncoder(nn.Module):
         return x
 
 
-class SemanticDecoderBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride, dilations, device=None, dtype=None, operations=None):
-        super().__init__()
-        if stride == 1:
-            self.conv = operations.Conv1d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True, device=device, dtype=dtype)
-        else:
-            self.conv = operations.ConvTranspose1d(
-                in_channels, out_channels, 2 * stride, stride, (stride + 1) // 2,
-                output_padding=1 if stride % 2 == 1 else 0, bias=False, device=device, dtype=dtype,
-            )
-        self.res_units = nn.ModuleList([
-            SemanticResidualUnit(out_channels, out_channels, dilation, device=device, dtype=dtype, operations=operations)
-            for dilation in dilations
-        ])
-
-    def forward(self, x):
-        x = self.conv(x)
-        for unit in self.res_units:
-            x = unit(x)
-        return x
-
-
-class SemanticDecoder(nn.Module):
-    def __init__(self, config, device=None, dtype=None, operations=None):
-        super().__init__()
-        semantic_hidden = config["semantic_hidden_size"]
-        strides = config["strides"]
-        ratios = config["channel_ratios"]
-        dilations = config["block_dilations"]
-        kernel_size = config["kernel_size"]
-
-        self.conv1 = operations.Conv1d(semantic_hidden, int(semantic_hidden * ratios[0]), kernel_size, 1, kernel_size // 2, bias=False, device=device, dtype=dtype)
-        blocks = []
-        for i, stride in enumerate(strides):
-            in_channels = int(semantic_hidden * ratios[i])
-            if i < len(ratios) - 1:
-                out_channels = int(semantic_hidden * ratios[i + 1])
-            else:
-                out_channels = semantic_hidden
-            blocks.append(SemanticDecoderBlock(in_channels, out_channels, stride, dilations, device=device, dtype=dtype, operations=operations))
-        self.conv_blocks = nn.ModuleList(blocks)
-        self.conv2 = operations.Conv1d(semantic_hidden, semantic_hidden, kernel_size, 1, kernel_size // 2, bias=False, device=device, dtype=dtype)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        for block in self.conv_blocks:
-            x = block(x)
-        return self.conv2(x)
-
-
 class HubertGroupNormConvLayer(nn.Module):
     def __init__(self, in_dim, out_dim, kernel, stride, device=None, dtype=None, operations=None):
         super().__init__()
         self.conv = operations.Conv1d(in_dim, out_dim, kernel_size=kernel, stride=stride, bias=False, device=device, dtype=dtype)
         self.activation = nn.GELU()
-        self.layer_norm = nn.GroupNorm(num_groups=out_dim, num_channels=out_dim, affine=True, device=device, dtype=dtype)
+        self.layer_norm = operations.GroupNorm(num_groups=out_dim, num_channels=out_dim, affine=True, device=device, dtype=dtype)
 
     def forward(self, x):
         x = self.conv(x)
@@ -354,7 +300,7 @@ class HubertFeatureEncoder(nn.Module):
 class HubertFeatureProjection(nn.Module):
     def __init__(self, config, device=None, dtype=None, operations=None):
         super().__init__()
-        self.layer_norm = nn.LayerNorm(config["conv_dim"][-1], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
+        self.layer_norm = operations.LayerNorm(config["conv_dim"][-1], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
         self.projection = operations.Linear(config["conv_dim"][-1], config["hidden_size"], device=device, dtype=dtype)
         self.dropout = nn.Identity()
 
@@ -374,7 +320,6 @@ class HubertPositionalConvEmbedding(nn.Module):
             groups=config["num_conv_pos_embedding_groups"],
             device=device, dtype=dtype,
         )
-        self.conv = torch.nn.utils.parametrizations.weight_norm(self.conv, name="weight", dim=2)
         self.num_pad_remove = 1 if config["num_conv_pos_embeddings"] % 2 == 0 else 0
         self.activation = nn.GELU()
 
@@ -424,9 +369,9 @@ class HubertEncoderLayer(nn.Module):
     def __init__(self, config, device=None, dtype=None, operations=None):
         super().__init__()
         self.attention = HubertAttention(config["hidden_size"], config["num_attention_heads"], device=device, dtype=dtype, operations=operations)
-        self.layer_norm = nn.LayerNorm(config["hidden_size"], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
+        self.layer_norm = operations.LayerNorm(config["hidden_size"], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
         self.feed_forward = HubertFeedForward(config, device=device, dtype=dtype, operations=operations)
-        self.final_layer_norm = nn.LayerNorm(config["hidden_size"], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
+        self.final_layer_norm = operations.LayerNorm(config["hidden_size"], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
 
     def forward(self, x):
         residual = x
@@ -441,7 +386,7 @@ class HubertEncoder(nn.Module):
     def __init__(self, config, device=None, dtype=None, operations=None):
         super().__init__()
         self.pos_conv_embed = HubertPositionalConvEmbedding(config, device=device, dtype=dtype, operations=operations)
-        self.layer_norm = nn.LayerNorm(config["hidden_size"], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
+        self.layer_norm = operations.LayerNorm(config["hidden_size"], eps=config.get("layer_norm_eps", 1e-5), device=device, dtype=dtype)
         self.dropout = nn.Identity()
         self.layers = nn.ModuleList([
             HubertEncoderLayer(config, device=device, dtype=dtype, operations=operations)
@@ -476,11 +421,6 @@ class OmniVoiceTokenizer(nn.Module):
 
     def __init__(self, config, device=None, dtype=None, operations=None):
         super().__init__()
-        self.config = config
-        self.device = device
-        self.dtype = dtype
-        self.operations = operations
-
         acoustic_config = config["acoustic_model_config"]
         semantic_config = config["semantic_model_config"]
 
@@ -503,21 +443,24 @@ class OmniVoiceTokenizer(nn.Module):
             "block_dilations": config.get("block_dilations", [1, 1]),
             "kernel_size": config.get("kernel_size", 3),
         }, device=device, dtype=dtype, operations=ops)
-        self.decoder_semantic = SemanticDecoder({
-            "semantic_hidden_size": semantic_config.get("hidden_size", 768),
-            "strides": config.get("strides", [1, 1]),
-            "channel_ratios": config.get("channel_ratios", [1, 1]),
-            "block_dilations": config.get("block_dilations", [1, 1]),
-            "kernel_size": config.get("kernel_size", 3),
-        }, device=device, dtype=dtype, operations=ops)
         self.semantic_model = SemanticModel(semantic_config, device=device, dtype=dtype, operations=ops)
         self.fc = ops.Linear(self.hidden_size, self.hidden_size, device=device, dtype=dtype)
-        self.fc1 = ops.Linear(self.hidden_size, semantic_config.get("hidden_size", 768), device=device, dtype=dtype)
         self.fc2 = ops.Linear(self.hidden_size, acoustic_config.get("hidden_size", 256), device=device, dtype=dtype)
         self.quantizer = ResidualVectorQuantization(
             self.num_quantizers, self.hidden_size, self.codebook_size, self.codebook_dim,
             device=device, dtype=dtype, operations=ops,
         )
+
+    def load_state_dict(self, state_dict, strict=True, assign=False):
+        # Training-only weights (semantic reconstruction, EMA codebook statistics) are not loaded.
+        unused = ("decoder_semantic.", "fc1.", ".codebook.inited", ".codebook.cluster_size", ".codebook.embed_avg")
+        sd = {k: v for k, v in state_dict.items() if not k.startswith(unused[:2]) and not k.endswith(unused[2:])}
+        # The HuBERT positional conv is weight-normalized over the kernel axis; fold it into a plain weight.
+        prefix = "semantic_model.encoder.pos_conv_embed.conv."
+        g = sd.pop(prefix + "parametrizations.weight.original0")
+        v = sd.pop(prefix + "parametrizations.weight.original1")
+        sd[prefix + "weight"] = torch._weight_norm(v.float(), g.float(), 2).to(v.dtype)
+        return super().load_state_dict(sd, strict=strict, assign=assign)
 
     @property
     def frame_rate(self):
@@ -536,7 +479,7 @@ class OmniVoiceTokenizer(nn.Module):
 
     def encode(self, input_values):
         """Encode mono waveform [batch, 1, samples] to codes [batch, num_quantizers, length]."""
-        e_semantic = self.extract_semantic(input_values).detach().transpose(1, 2)
+        e_semantic = self.extract_semantic(input_values).transpose(1, 2)
         e_semantic = self.encoder_semantic(e_semantic)
 
         if self.acoustic_encoder.conv_output_length(input_values.shape[2]) != e_semantic.shape[2]:
@@ -550,12 +493,6 @@ class OmniVoiceTokenizer(nn.Module):
 
     def decode(self, audio_codes):
         """Decode codes [batch, num_quantizers, length] to waveform [batch, 1, samples]."""
-        if audio_codes.shape[1] != self.num_quantizers and audio_codes.shape[-1] == self.num_quantizers:
-            audio_codes = audio_codes.transpose(1, 2)
         quantized = self.quantizer.decode(audio_codes.transpose(0, 1))
         quantized_acoustic = self.fc2(quantized.transpose(1, 2)).transpose(1, 2)
         return self.acoustic_decoder(quantized_acoustic)
-
-    @classmethod
-    def from_state_dict(cls, sd, config, device=None, dtype=None, operations=None):
-        return cls(config, device=device, dtype=dtype, operations=operations)

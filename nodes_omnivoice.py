@@ -74,12 +74,15 @@ class OmniVoiceLoader:
 
         load_device = comfy.model_management.get_torch_device()
         offload_device = comfy.model_management.unet_offload_device()
-        dtype = comfy.model_management.unet_dtype(model_params=-1, supported_dtypes=[torch.bfloat16, torch.float32])
-        manual_cast_dtype = comfy.model_management.unet_manual_cast(dtype, load_device, supported_dtypes=[torch.bfloat16, torch.float32])
+        # Same dtype policy as core's model loading: bf16 where supported, fp16 on older GPUs, honoring --force-fp16 and similar flags.
+        supported_dtypes = [torch.bfloat16, torch.float16, torch.float32]
         # INT8 checkpoints carry per-layer .comfy_quant keys, consumed by the mixed-precision ops.
         quant = comfy.utils.detect_layer_quantization(sd, "")
+        weight_dtype = None if quant is not None else comfy.utils.weight_dtype(model_sd)
+        dtype = comfy.model_management.unet_dtype(model_params=comfy.utils.calculate_parameters(model_sd), supported_dtypes=supported_dtypes, weight_dtype=weight_dtype)
+        manual_cast_dtype = comfy.model_management.unet_manual_cast(None if quant is not None else dtype, load_device, supported_dtypes)
         if quant is not None:
-            operations = comfy.ops.mixed_precision_ops(quant, dtype)
+            operations = comfy.ops.mixed_precision_ops(quant, manual_cast_dtype or dtype)
             codec_ops = comfy.ops.mixed_precision_ops(quant, torch.float32)
         else:
             operations = comfy.ops.pick_operations(dtype, manual_cast_dtype, load_device=load_device)
